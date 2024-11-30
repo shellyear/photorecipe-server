@@ -4,15 +4,19 @@ import { Strategy } from 'passport-google-oauth20'
 import bcrypt from 'bcrypt'
 import User, { IUser } from '../models/User'
 import jwt from 'jsonwebtoken'
+import dotenv from 'dotenv'
+import Config from '../config'
 
-const JWT_SECRET = process.env.JWT_SECRET || ''
+dotenv.config()
+
+const JWT_SECRET = Config.JWT_SECRET
 
 passport.use(
   new Strategy(
     {
-      clientID: process.env.GOOGLE_CLIENT_ID || '',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-      callbackURL: '/auth/google/callback'
+      clientID: Config.GOOGLE_CLIENT_ID,
+      clientSecret: Config.GOOGLE_CLIENT_SECRET,
+      callbackURL: 'http://localhost:3000/auth/google' // in local development, you might use something like http://localhost:5000/auth/google/callback. In production, you’ll need to change this to your app's public domain URL.
     },
     async (accessToken, refreshToken, profile, done) => {
       const email = profile?.emails?.[0]?.value
@@ -49,17 +53,21 @@ router.post(
       }
     >,
     res
-  ): Promise<any> => {
+  ) => {
     const { email, password } = req.body
 
     const user = await User.findOne({ email })
 
     if (!user || !user.password) {
-      return res.status(401).send('User not found')
+      res.status(401).send('User not found')
+      return
     }
 
     const validPassword = await bcrypt.compare(password, user.password)
-    if (!validPassword) return res.status(401).send('Invalid password')
+    if (!validPassword) {
+      res.status(401).send('Invalid password')
+      return
+    }
 
     const token = jwt.sign({ id: user._id }, JWT_SECRET)
     res.json({ token })
@@ -94,4 +102,4 @@ router.get(
   }
 )
 
-export default router;
+export default router

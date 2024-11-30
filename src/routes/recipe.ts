@@ -5,6 +5,7 @@ import { z } from 'zod'
 import axios from 'axios'
 import { convertBufferToBase64, getPrompt } from './recipe/helpers'
 import { RequestBody } from './recipe/helpers'
+import Config from '../config'
 
 const RecipeFormat = z.object({
   name: z.string(),
@@ -28,7 +29,7 @@ router.post(
       dietaryRestrictions,
       missingIngredients
     }: RequestBody = req.body
-    
+
     const promptText = getPrompt(recipeChoice, {
       skillLevel,
       timeConstraint,
@@ -39,13 +40,13 @@ router.post(
     if (!image) {
       return
     }
-  
+
     try {
       const url = 'https://api.openai.com/v1/chat/completions'
       const options = {
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
+          Authorization: `Bearer ${Config.OPENAI_API_KEY}`
         }
       }
       const body = JSON.stringify({
@@ -58,7 +59,7 @@ router.post(
               {
                 type: 'image_url',
                 image_url: {
-                  url: convertBufferToBase64(image),
+                  url: convertBufferToBase64(image)
                   // detail: 'low'
                 }
               }

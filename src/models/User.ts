@@ -12,6 +12,6 @@ const userSchema = new Schema({
   password: { type: String },
   googleId: { type: String },
   name: { type: String }
-})
+}, { timestamps: true })
 
 export default model<IUser>('User', userSchema)
