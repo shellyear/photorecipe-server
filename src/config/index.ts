@@ -4,6 +4,8 @@ dotenv.config()
 
 const Config = {
   PORT: process.env.PORT || 5000,
+  API_BASE_URL: process.env.API_BASE_URL || 'http://localhost:5000',
+  FRONT_END_BASE_URL: process.env.FRONT_END_BASE_URL || 'http://localhost:3000',
   MONGO_ATLAS_CONNECTION_STRING:
     process.env.MONGO_ATLAS_CONNECTION_STRING ||
     'mongodb_atlas_connection_string',

@@ -6,6 +6,7 @@ import User, { IUser } from '../models/User'
 import jwt from 'jsonwebtoken'
 import dotenv from 'dotenv'
 import Config from '../config'
+import crypto from 'crypto'
 
 dotenv.config()
 
@@ -16,7 +17,7 @@ passport.use(
     {
       clientID: Config.GOOGLE_CLIENT_ID,
       clientSecret: Config.GOOGLE_CLIENT_SECRET,
-      callbackURL: 'http://localhost:3000/auth/google' // in local development, you might use something like http://localhost:5000/auth/google/callback. In production, you’ll need to change this to your app's public domain URL.
+      callbackURL: `${Config.API_BASE_URL}/api/auth/google/callback` // this url is set in google OAuth client -> Authorized redirect URIs
     },
     async (accessToken, refreshToken, profile, done) => {
       const email = profile?.emails?.[0]?.value
@@ -30,7 +31,8 @@ passport.use(
         user = new User({
           googleId: profile.id,
           email,
-          name: profile.displayName
+          name: profile.displayName,
+          profilePicture: profile._json.picture
         })
         await user.save()
       }
@@ -40,7 +42,66 @@ passport.use(
 )
 
 const router = express.Router()
+const temporaryCodes = new Map<string, { userId: string; expiresAt: number }>() // Store codes and their associated user IDs (or sessions)
 
+/* OAuth flow routes */
+router.get(
+  '/google',
+  passport.authenticate('google', { scope: ['profile', 'email'] })
+)
+
+/* For retrieving google account info of the user. This route is fired on passport callbackURL */
+router.get(
+  '/google/callback',
+  passport.authenticate('google', {
+    session: false
+  }), // authenticate and retrieve google account info
+  (req, res) => {
+    const user = req.user as IUser
+    if (user && user._id) {
+      const tempCode = crypto.randomBytes(16).toString('hex')
+      temporaryCodes.set(tempCode, {
+        userId: user._id.toString(),
+        expiresAt: Date.now() + 5 * 60 * 1000 // Code valid for 5 minutes
+      })
+
+      res.send(`
+        <script>
+          window.opener.postMessage({ code: "${tempCode}" }, "${Config.FRONT_END_BASE_URL}");
+          window.close();
+        </script>
+      `)
+    }
+  }
+)
+
+router.post('/token', async (req, res) => {
+  const { code } = req.body
+
+  if (!code || !temporaryCodes.has(code)) {
+    res.status(400).send('Invalid or expired code')
+    return
+  }
+
+  const tempData = temporaryCodes.get(code)
+
+  if (!tempData) return
+
+  if (Date.now() > tempData.expiresAt) {
+    temporaryCodes.delete(code) // Cleanup expired codes
+    res.status(400).send('Code expired')
+    return
+  }
+
+  const userId = tempData.userId
+  const token = jwt.sign({ id: userId }, JWT_SECRET)
+
+  temporaryCodes.delete(code)
+
+  res.json({ token })
+})
+
+/* Email & password routes */
 router.post(
   '/login',
   async (
@@ -79,27 +140,11 @@ router.post('/register', async (req, res) => {
   const hashedPassword = await bcrypt.hash(password, 10)
 
   const user = new User({ email, password: hashedPassword })
+
   await user.save()
 
   const token = jwt.sign({ id: user._id }, JWT_SECRET)
   res.json({ token })
 })
-
-router.get(
-  '/google',
-  passport.authenticate('google', { scope: ['profile', 'email'] })
-)
-
-router.get(
-  '/google/callback',
-  passport.authenticate('google', { session: false }),
-  (req, res) => {
-    const user = req.user as IUser
-    if (user && user._id) {
-      const token = jwt.sign({ id: user._id }, JWT_SECRET)
-      res.json({ token })
-    }
-  }
-)
 
 export default router
