@@ -7,6 +7,7 @@ import jwt from 'jsonwebtoken'
 import dotenv from 'dotenv'
 import Config from '../config'
 import crypto from 'crypto'
+import { COOKIE_AUTH } from '../middlewares/auth'
 
 dotenv.config()
 
@@ -94,11 +95,18 @@ router.post('/token', async (req, res) => {
   }
 
   const userId = tempData.userId
-  const token = jwt.sign({ id: userId }, JWT_SECRET)
+  const token = jwt.sign({ id: userId }, JWT_SECRET, { expiresIn: '30 days' })
 
   temporaryCodes.delete(code)
 
-  res.json({ token })
+  res
+    .cookie(COOKIE_AUTH, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict'
+    })
+    .status(200)
+    .send(`${COOKIE_AUTH} has been set in cookie`)
 })
 
 /* Email & password routes */
@@ -130,8 +138,17 @@ router.post(
       return
     }
 
-    const token = jwt.sign({ id: user._id }, JWT_SECRET)
-    res.json({ token })
+    const token = jwt.sign({ id: user._id }, JWT_SECRET, {
+      expiresIn: '7 days'
+    })
+    res
+      .cookie(COOKIE_AUTH, token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict'
+      })
+      .status(200)
+      .send('Login successful')
   }
 )
 
@@ -142,9 +159,24 @@ router.post('/register', async (req, res) => {
   const user = new User({ email, password: hashedPassword })
 
   await user.save()
+  const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '30 days' })
+  res
+    .cookie(COOKIE_AUTH, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict'
+    })
+    .status(201)
+    .send('User registered')
+})
 
-  const token = jwt.sign({ id: user._id }, JWT_SECRET)
-  res.json({ token })
+router.post('/logout', (req, res) => {
+  res.clearCookie(COOKIE_AUTH, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict'
+  })
+  res.status(200).send('Logged out')
 })
 
 export default router

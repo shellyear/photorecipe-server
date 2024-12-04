@@ -3,6 +3,7 @@ import cors from 'cors'
 import mongoose from 'mongoose'
 import routes from './routes'
 import Config from './config'
+import cookieParser from 'cookie-parser'
 
 const app = express()
 app.use(express.json())
@@ -11,6 +12,7 @@ app.use(
     origin: Config.FRONT_END_BASE_URL
   })
 )
+app.use(cookieParser())
 
 mongoose
   .connect(Config.MONGO_ATLAS_CONNECTION_STRING, {})

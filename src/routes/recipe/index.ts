@@ -3,9 +3,10 @@ import multer from 'multer'
 import { zodResponseFormat } from 'openai/helpers/zod'
 import { z } from 'zod'
 import axios from 'axios'
-import { convertBufferToBase64, getPrompt } from './recipe/helpers'
-import { RequestBody } from './recipe/helpers'
-import Config from '../config'
+import { convertBufferToBase64, getPrompt } from './helpers'
+import { RequestBody } from './helpers'
+import Config from '../../config'
+import { authenticateJWT } from '../../middlewares/auth'
 
 const RecipeFormat = z.object({
   name: z.string(),
@@ -19,6 +20,7 @@ const upload = multer({ storage })
 
 router.post(
   '/',
+  authenticateJWT,
   upload.single('image'),
   async (req: Request<object, object, RequestBody>, res: Response) => {
     const image = req.file
