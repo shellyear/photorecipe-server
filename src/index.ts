@@ -4,6 +4,7 @@ import mongoose from 'mongoose'
 import routes from './routes'
 import Config from './config'
 import cookieParser from 'cookie-parser'
+import { cleanUpExpiredTokens } from './jobs/cleanupJob'
 
 const app = express()
 app.use(express.json())
@@ -22,6 +23,7 @@ mongoose
     app.listen(Config.PORT, () =>
       console.log(`Server running on port ${Config.PORT}`)
     )
+    cleanUpExpiredTokens()
   })
   .catch((err) => {
     console.log(

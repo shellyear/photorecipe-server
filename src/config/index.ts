@@ -13,7 +13,9 @@ const Config = {
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || 'google_client_id',
   GOOGLE_CLIENT_SECRET:
     process.env.GOOGLE_CLIENT_SECRET || 'google_client_secret',
-  OPENAI_API_KEY: process.env.OPENAI_API_KEY || 'open_ai_api_key'
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY || 'open_ai_api_key',
+  SMTP_USER: process.env.SMTP_USER || 'smpt_user@gmail.com',
+  SMTP_PASS: process.env.SMTP_PASS || 'googleAppPassword'
 }
 
 export default Config

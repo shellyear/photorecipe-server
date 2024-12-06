@@ -5,13 +5,22 @@ export interface IUser extends Document {
   password?: string
   googleId?: string
   name?: string
+  isVerified: boolean,
+  verificationToken?: string,
+  verificationTokenExpiresAt?: Date
 }
 
-const userSchema = new Schema({
-  email: { type: String, unique: true },
-  password: { type: String },
-  googleId: { type: String },
-  name: { type: String }
-}, { timestamps: true })
+const userSchema = new Schema(
+  {
+    email: { type: String, unique: true },
+    password: { type: String },
+    googleId: { type: String },
+    name: { type: String },
+    isVerified: { type: Boolean, default: false },
+    verificationToken: { type: String },
+    verificationTokenExpiresAt: { type: Date }
+  },
+  { timestamps: true }
+)
 
 export default model<IUser>('User', userSchema)

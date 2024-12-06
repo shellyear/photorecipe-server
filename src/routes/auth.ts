@@ -8,10 +8,19 @@ import dotenv from 'dotenv'
 import Config from '../config'
 import crypto from 'crypto'
 import { COOKIE_AUTH } from '../middlewares/auth'
+import nodemailer from 'nodemailer'
 
 dotenv.config()
 
 const JWT_SECRET = Config.JWT_SECRET
+
+const transporter = nodemailer.createTransport({
+  service: 'Gmail',
+  auth: {
+    user: Config.SMTP_USER,
+    pass: Config.SMTP_PASS
+  }
+})
 
 passport.use(
   new Strategy(
@@ -33,7 +42,8 @@ passport.use(
           googleId: profile.id,
           email,
           name: profile.displayName,
-          profilePicture: profile._json.picture
+          profilePicture: profile._json.picture,
+          isVerified: true
         })
         await user.save()
       }
@@ -154,20 +164,116 @@ router.post(
 
 router.post('/register', async (req, res) => {
   const { email, password } = req.body
-  const hashedPassword = await bcrypt.hash(password, 10)
 
-  const user = new User({ email, password: hashedPassword })
+  try {
+    const existingUser = await User.findOne({ email })
+    if (existingUser && existingUser.isVerified) {
+      res.status(400).json({ message: 'Email already in use' })
+      return
+    }
 
-  await user.save()
-  const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '30 days' })
-  res
-    .cookie(COOKIE_AUTH, token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict'
+    /* User exists but is not verified yet, resend verification email */
+    if (existingUser && !existingUser.isVerified) {
+      const verificationToken = crypto.randomBytes(32).toString('hex')
+      existingUser.verificationToken = verificationToken
+      existingUser.verificationTokenExpiresAt = new Date(
+        Date.now() + 1 * 60 * 60 * 1000
+      ) // 1 hour
+      await existingUser.save()
+
+      const verificationUrl = `${Config.FRONT_END_BASE_URL}/verify-email?token=${verificationToken}`
+      const mailOptions = {
+        from: Config.SMTP_USER,
+        to: existingUser.email,
+        subject: 'Verify your email',
+        html: `    
+          <p>Hello,</p>
+          <p>Thank you for registering with us. Please click the link below to verify your email address:</p>
+          <p><a href="${verificationUrl}" target="_blank">Click here to verify your email</a></p>
+          <p>Once your email is verified, you will be automatically logged into your account and you can proceed to use the app right away. There is no need to log in again.</p>
+          <p>If you did not register with us, please ignore this email.</p>
+        `
+      }
+
+      await transporter.sendMail(mailOptions)
+
+      res.status(200).json({ message: 'Verification email resent' })
+      return
+    }
+
+    /* If no existing user, create a new user */
+    const salt = await bcrypt.genSalt(10)
+    const hashedPassword = await bcrypt.hash(password, salt)
+    const verificationToken = crypto.randomBytes(32).toString('hex')
+
+    const user = new User({
+      email,
+      password: hashedPassword,
+      verificationToken,
+      isVerified: false,
+      verificationTokenExpiresAt: new Date(Date.now() + 1 * 60 * 60 * 1000) // 1 hour
     })
-    .status(201)
-    .send('User registered')
+
+    await user.save()
+
+    const verificationUrl = `${Config.FRONT_END_BASE_URL}/verify-email?token=${verificationToken}`
+    const mailOptions = {
+      from: Config.SMTP_USER,
+      to: user.email,
+      subject: 'Verify your email',
+      text: `Click the link to verify your email: ${verificationUrl}`
+    }
+
+    await transporter.sendMail(mailOptions)
+    res
+      .status(201)
+      .json({ message: 'User registered. Verification email sent.' })
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ message: 'Error during registration' })
+  }
+})
+
+router.get('/verify-email', async (req, res) => {
+  const { token: verificationToken } = req.query
+
+  try {
+    const user = await User.findOne({ verificationToken })
+
+    if (!user) {
+      res.status(400).json({ message: 'Invalid or expired token' })
+      return
+    }
+
+    if (
+      user.verificationTokenExpiresAt &&
+      user.verificationTokenExpiresAt < new Date()
+    ) {
+      res.status(400).json({ message: 'Verification token has expired' })
+      return
+    }
+
+    user.isVerified = true
+    user.verificationToken = undefined
+    user.verificationTokenExpiresAt = undefined
+    await user.save()
+
+    const token = jwt.sign({ id: user._id }, JWT_SECRET, {
+      expiresIn: '30 days'
+    })
+
+    res
+      .cookie(COOKIE_AUTH, token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict'
+      })
+      .status(200)
+      .send('User has been verified')
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ message: 'Error verifying email' })
+  }
 })
 
 router.post('/logout', (req, res) => {
