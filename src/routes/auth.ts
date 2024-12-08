@@ -135,30 +135,52 @@ router.post(
   ) => {
     const { email, password } = req.body
 
-    const user = await User.findOne({ email })
+    try {
+      const user = await User.findOne({ email })
 
-    if (!user || !user.password) {
-      res.status(401).send('User not found')
-      return
-    }
+      if (!user) {
+        res.status(404).json({
+          code: 'INVALID_CREDENTIALS',
+          message: 'Please type correct email and password'
+        })
+        return
+      }
 
-    const validPassword = await bcrypt.compare(password, user.password)
-    if (!validPassword) {
-      res.status(401).send('Invalid password')
-      return
-    }
+      if (!user.email || !user.password) {
+        res.status(401).json({
+          code: 'INVALID_CREDENTIALS',
+          message: 'Please type correct email and password'
+        })
+        return
+      }
 
-    const token = jwt.sign({ id: user._id }, JWT_SECRET, {
-      expiresIn: '7 days'
-    })
-    res
-      .cookie(COOKIE_AUTH, token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict'
+      const validPassword = await bcrypt.compare(password, user.password)
+      if (!validPassword) {
+        res.status(401).send({
+          code: 'INVALID_CREDENTIALS',
+          message: 'Please type correct email and password'
+        })
+        return
+      }
+
+      const token = jwt.sign({ id: user._id }, JWT_SECRET, {
+        expiresIn: '7 days'
       })
-      .status(200)
-      .send('Login successful')
+
+      res
+        .cookie(COOKIE_AUTH, token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict'
+        })
+        .status(200)
+        .send('Login successful')
+    } catch (error) {
+      console.error((error as Error).message, new Date())
+      res
+        .status(400)
+        .json({ code: 'LOGIN_ERROR', message: (error as Error).message })
+    }
   }
 )
 
@@ -168,7 +190,9 @@ router.post('/register', async (req, res) => {
   try {
     const existingUser = await User.findOne({ email })
     if (existingUser && existingUser.isVerified) {
-      res.status(400).json({ message: 'Email already in use' })
+      res
+        .status(400)
+        .json({ code: 'EMAIL_IN_USE', message: 'Email already in use' })
       return
     }
 
@@ -190,7 +214,7 @@ router.post('/register', async (req, res) => {
           <p>Hello,</p>
           <p>Thank you for registering with us. Please click the link below to verify your email address:</p>
           <p><a href="${verificationUrl}" target="_blank">Click here to verify your email</a></p>
-          <p>Once your email is verified, you will be automatically logged into your account and you can proceed to use the app right away. There is no need to log in again.</p>
+          <p><b>Once your email is verified, you will be automatically logged into your account and you can proceed to use the app right away. There is no need to log in again.</b></p>
           <p>If you did not register with us, please ignore this email.</p>
         `
       }
@@ -221,7 +245,13 @@ router.post('/register', async (req, res) => {
       from: Config.SMTP_USER,
       to: user.email,
       subject: 'Verify your email',
-      text: `Click the link to verify your email: ${verificationUrl}`
+      text: `          
+        <p>Hello,</p>
+        <p>Thank you for registering with us. Please click the link below to verify your email address:</p>
+        <p><a href="${verificationUrl}" target="_blank">Click here to verify your email</a></p>
+        <p><b>Once your email is verified, you will be automatically logged into your account and you can proceed to use the app right away. There is no need to log in again.</b></p>
+        <p>If you did not register with us, please ignore this email.</p>
+      `
     }
 
     await transporter.sendMail(mailOptions)
@@ -230,7 +260,10 @@ router.post('/register', async (req, res) => {
       .json({ message: 'User registered. Verification email sent.' })
   } catch (error) {
     console.error(error)
-    res.status(500).json({ message: 'Error during registration' })
+    res.status(500).json({
+      code: 'REGISTRATION_ERROR',
+      message: 'Error during registration'
+    })
   }
 })
 
@@ -241,7 +274,9 @@ router.get('/verify-email', async (req, res) => {
     const user = await User.findOne({ verificationToken })
 
     if (!user) {
-      res.status(400).json({ message: 'Invalid or expired token' })
+      res
+        .status(400)
+        .json({ code: 'INVALID_TOKEN', message: 'Invalid or expired token' })
       return
     }
 
@@ -249,7 +284,10 @@ router.get('/verify-email', async (req, res) => {
       user.verificationTokenExpiresAt &&
       user.verificationTokenExpiresAt < new Date()
     ) {
-      res.status(400).json({ message: 'Verification token has expired' })
+      res.status(400).json({
+        code: 'INVALID_TOKEN',
+        message: 'Verification token has expired'
+      })
       return
     }
 
@@ -259,14 +297,15 @@ router.get('/verify-email', async (req, res) => {
     await user.save()
 
     const token = jwt.sign({ id: user._id }, JWT_SECRET, {
-      expiresIn: '30 days'
+      expiresIn: '90 days'
     })
 
     res
       .cookie(COOKIE_AUTH, token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict'
+        sameSite: 'strict',
+        maxAge: 90 * 24 * 60 * 60 * 1000 // (90 days)
       })
       .status(200)
       .send('User has been verified')

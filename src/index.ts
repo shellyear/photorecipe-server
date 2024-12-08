@@ -10,7 +10,8 @@ const app = express()
 app.use(express.json())
 app.use(
   cors({
-    origin: Config.FRONT_END_BASE_URL
+    origin: Config.FRONT_END_BASE_URL,
+    credentials: true // allow  browser to send or receive cookies and authentication headers
   })
 )
 app.use(cookieParser())
