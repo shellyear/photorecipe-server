@@ -6,7 +6,7 @@ import axios from 'axios'
 import { convertBufferToBase64, getPrompt } from './helpers'
 import { RequestBody } from './helpers'
 import Config from '../../config'
-import { authenticateJWT } from '../../middlewares/auth'
+import { verifyJWT } from '../../middlewares/auth'
 
 const RecipeFormat = z.object({
   name: z.string(),
@@ -20,7 +20,7 @@ const upload = multer({ storage })
 
 router.post(
   '/',
-  authenticateJWT,
+  verifyJWT,
   upload.single('image'),
   async (req: Request<object, object, RequestBody>, res: Response) => {
     const image = req.file

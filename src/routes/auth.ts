@@ -105,7 +105,7 @@ router.post('/token', async (req, res) => {
   }
 
   const userId = tempData.userId
-  const token = jwt.sign({ id: userId }, JWT_SECRET, { expiresIn: '30 days' })
+  const token = jwt.sign({ userId }, JWT_SECRET, { expiresIn: '30 days' })
 
   temporaryCodes.delete(code)
 
@@ -163,7 +163,7 @@ router.post(
         return
       }
 
-      const token = jwt.sign({ id: user._id }, JWT_SECRET, {
+      const token = jwt.sign({ userId: user._id }, JWT_SECRET, {
         expiresIn: '7 days'
       })
 
@@ -174,12 +174,12 @@ router.post(
           sameSite: 'strict'
         })
         .status(200)
-        .send('Login successful')
+        .json({ code: 'Login successful' })
     } catch (error) {
       console.error((error as Error).message, new Date())
       res
         .status(400)
-        .json({ code: 'LOGIN_ERROR', message: (error as Error).message })
+        .json({ code: 'LOGIN_ERROR', message: 'Error during signing' })
     }
   }
 )
@@ -296,7 +296,7 @@ router.get('/verify-email', async (req, res) => {
     user.verificationTokenExpiresAt = undefined
     await user.save()
 
-    const token = jwt.sign({ id: user._id }, JWT_SECRET, {
+    const token = jwt.sign({ userId: user._id }, JWT_SECRET, {
       expiresIn: '90 days'
     })
 
@@ -321,7 +321,9 @@ router.post('/logout', (req, res) => {
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict'
   })
-  res.status(200).send('Logged out')
+  res.status(200).json({
+    message: 'User has been logged out'
+  })
 })
 
 export default router
