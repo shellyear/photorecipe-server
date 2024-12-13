@@ -308,7 +308,7 @@ router.get('/verify-email', async (req, res) => {
         maxAge: 90 * 24 * 60 * 60 * 1000 // (90 days)
       })
       .status(200)
-      .send('User has been verified')
+      .json({ message: 'User has been verified' })
   } catch (error) {
     console.error(error)
     res.status(500).json({ message: 'Error verifying email' })
