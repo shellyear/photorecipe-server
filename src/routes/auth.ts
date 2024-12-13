@@ -245,7 +245,7 @@ router.post('/register', async (req, res) => {
       from: Config.SMTP_USER,
       to: user.email,
       subject: 'Verify your email',
-      text: `          
+      html: `          
         <p>Hello,</p>
         <p>Thank you for registering with us. Please click the link below to verify your email address:</p>
         <p><a href="${verificationUrl}" target="_blank">Click here to verify your email</a></p>
