@@ -32,10 +32,14 @@ router.post(
       missingIngredients
     }: RequestBody = req.body
 
+    const parsedDietaryRestrictions = JSON.parse(
+      dietaryRestrictions || ''
+    ) as string[]
+
     const promptText = getPrompt(recipeChoice, {
       skillLevel,
       timeConstraint,
-      dietaryRestrictions,
+      dietaryRestrictions: parsedDietaryRestrictions,
       missingIngredients
     })
 
@@ -78,12 +82,15 @@ router.post(
       })
       const response = await axios.post(url, body, options)
       console.log('Token usage', response?.data.usage)
-      res.json(response.data.choices[0].message.content)
+      const data = JSON.parse(response.data.choices[0].message.content)
+      res.status(200).json({
+        data
+      })
     } catch (error: any) {
       console.error('Error fetching from OpenAI:', error?.message)
       res
         .status(500)
-        .json({ error: `Failed to fetch recipe: ${error?.message}` })
+        .json({ message: `Failed to fetch recipe: ${error?.message}` })
     }
   }
 )

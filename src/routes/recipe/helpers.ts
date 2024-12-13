@@ -17,12 +17,16 @@ export enum RecipeChoice {
 }
 
 export interface RequestBody {
-  image: Buffer
+  image: File
   recipeChoice: RecipeChoice
   skillLevel?: SkillLevel
   timeConstraint?: TimeConstraint
-  dietaryRestrictions?: string[]
+  dietaryRestrictions?: string // Json parsed string array in form data
   missingIngredients?: string
+}
+
+export type FormattedRequestBody = Omit<RequestBody, 'dietaryRestrictions'> & {
+  dietaryRestrictions?: string[]
 }
 
 export function convertBufferToBase64(image: Express.Multer.File): string {
@@ -43,7 +47,7 @@ export function getIngredientsRecipePrompt({
   dietaryRestrictions,
   missingIngredients
 }: Pick<
-  RequestBody,
+  FormattedRequestBody,
   'skillLevel' | 'timeConstraint' | 'dietaryRestrictions' | 'missingIngredients'
 >) {
   return `Give me a recipe for the ingredients on the photo. Missing ingredients on the photo: ${missingIngredients} Cooking time: ${timeConstraint}. Skill level: ${skillLevel}. ${
@@ -56,7 +60,7 @@ export function getIngredientsRecipePrompt({
 export function getPrompt(
   recipeChoice: RecipeChoice.DISH | RecipeChoice.INGREDIENTS,
   recipeOptions: Pick<
-    RequestBody,
+    FormattedRequestBody,
     | 'skillLevel'
     | 'timeConstraint'
     | 'dietaryRestrictions'
