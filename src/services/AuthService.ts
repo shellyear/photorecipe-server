@@ -2,19 +2,11 @@ import crypto from 'crypto'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import User, { IUser } from '../models/User'
-import nodemailer from 'nodemailer'
 import Config from '../config'
 
 const JWT_SECRET = Config.JWT_SECRET
-const transporter = nodemailer.createTransport({
-  service: 'Gmail',
-  auth: {
-    user: Config.SMTP_USER,
-    pass: Config.SMTP_PASS
-  }
-})
 
-const generateVerificationToken = () => {
+const generateToken = () => {
   return crypto.randomBytes(32).toString('hex')
 }
 
@@ -22,24 +14,13 @@ const generateJWT = (userId: string, expiresIn: string = '7d') => {
   return jwt.sign({ userId }, JWT_SECRET, { expiresIn })
 }
 
-const sendVerificationEmail = async (
-  email: string,
-  verificationToken: string
-) => {
-  const verificationUrl = `${Config.FRONT_END_BASE_URL}/verify-email?token=${verificationToken}`
-  const mailOptions = {
-    from: Config.SMTP_USER,
-    to: email,
-    subject: 'Verify your email',
-    html: `
-      <p>Hello,</p>
-      <p>Thank you for registering with us. Please click the link below to verify your email address:</p>
-      <p><a href="${verificationUrl}" target="_blank">Click here to verify your email</a></p>
-      <p><b>Once your email is verified, you will be automatically logged into your account.</b></p>
-      <p>If you did not register with us, please ignore this email.</p>
-    `
-  }
-  await transporter.sendMail(mailOptions)
+const encryptString = async (
+  str: string,
+  rounds: number = 10
+): Promise<string> => {
+  const salt = await bcrypt.genSalt(rounds)
+  const hashedString = await bcrypt.hash(str, salt)
+  return hashedString
 }
 
 const createUser = async (
@@ -51,9 +32,8 @@ const createUser = async (
     verificationTokenExpiresAt: Date
   }
 > => {
-  const salt = await bcrypt.genSalt(10)
-  const hashedPassword = await bcrypt.hash(password, salt)
-  const verificationToken = generateVerificationToken()
+  const hashedPassword = await encryptString(password, 10)
+  const verificationToken = generateToken()
 
   const user = new User({
     email,
@@ -102,9 +82,9 @@ const generateTemporaryCode = () => {
 }
 
 const AuthService = {
-  generateVerificationToken,
+  generateToken,
   generateJWT,
-  sendVerificationEmail,
+  encryptString,
   generateTemporaryCode,
   createUser,
   authenticateUser,

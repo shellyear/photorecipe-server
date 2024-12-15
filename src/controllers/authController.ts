@@ -5,6 +5,7 @@ import { Request, Response } from 'express'
 import Config from '../config'
 import { COOKIE_AUTH } from '../middlewares/auth'
 import AuthService from '../services/authService'
+import EmailService from '../services/emailService'
 
 const temporaryCodes = new Map<string, { userId: string; expiresAt: number }>() // Store codes and their associated user IDs (or sessions)
 
@@ -85,7 +86,10 @@ const validateCodeAndGenerateToken = async (req: Request, res: Response) => {
       sameSite: 'strict'
     })
     .status(200)
-    .send(`${COOKIE_AUTH} has been set in cookie`)
+    .send({
+      code: 'COOKIE_SET',
+      message: `${COOKIE_AUTH} has been set in cookie`
+    })
 }
 
 const login = async (
@@ -121,7 +125,7 @@ const login = async (
         sameSite: 'strict'
       })
       .status(200)
-      .json({ code: 'Login successful' })
+      .json({ code: 'LOGIN_SUCCESS', message: 'Login successul' })
   } catch (error) {
     console.error((error as Error).message, new Date())
     res
@@ -144,25 +148,28 @@ const register = async (req: Request, res: Response) => {
 
     /* User exists but is not verified yet, resend verification email */
     if (existingUser && !existingUser.isVerified) {
-      const verificationToken = AuthService.generateVerificationToken()
+      const verificationToken = AuthService.generateToken()
       existingUser.verificationToken = verificationToken
       existingUser.verificationTokenExpiresAt = new Date(
         Date.now() + 1 * 60 * 60 * 1000
       ) // 1 hour
       await existingUser.save()
 
-      await AuthService.sendVerificationEmail(
+      await EmailService.sendVerificationEmail(
         existingUser.email,
         existingUser.verificationToken
       )
 
-      res.status(200).json({ message: 'Verification email resent' })
+      res.status(200).json({
+        code: 'VERIFICATION_EMAIL_SENT',
+        message: 'Verification email resent'
+      })
       return
     }
 
     /* If no existing user, create a new user */
     const user = await AuthService.createUser(email, password)
-    await AuthService.sendVerificationEmail(user.email, user.verificationToken)
+    await EmailService.sendVerificationEmail(user.email, user.verificationToken)
     res
       .status(201)
       .json({ message: 'User registered. Verification email sent.' })
@@ -198,7 +205,7 @@ const verifyEmail = async (req: Request, res: Response) => {
         maxAge: 90 * 24 * 60 * 60 * 1000 // (90 days)
       })
       .status(200)
-      .json({ message: 'User has been verified' })
+      .json({ code: 'USER_VERIFIED', message: 'User has been verified' })
   } catch (error) {
     console.error(error)
     res.status(500).json({ message: 'Error verifying email' })
@@ -216,6 +223,67 @@ const logout = (req: Request, res: Response) => {
   })
 }
 
+const forgotPassword = async (req: Request, res: Response) => {
+  const { email } = req.body
+
+  try {
+    const user = await User.findOne({ email })
+    if (!user) {
+      res
+        .status(400)
+        .json({ message: 'If this email exists, a reset link will be sent.' })
+      return
+    }
+
+    const token = AuthService.generateToken()
+    const resetPasswordExpires = Date.now() + 3600000 // 1 hour
+
+    user.resetPasswordToken = token
+    user.resetPasswordExpires = new Date(resetPasswordExpires)
+
+    await user.save()
+
+    await EmailService.sendPasswordResetEmail(email, token)
+
+    res.status(200).json({
+      code: 'PASSWORD_RESET_LINK_SENT',
+      message: 'Password reset link sent to your email.'
+    })
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ message: 'Something went wrong.' })
+  }
+}
+
+const resetPassword = async (req: Request, res: Response) => {
+  const { token, newPassword } = req.body
+
+  try {
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() }
+    })
+
+    if (!user) {
+      res.status(400).json({ message: 'Invalid or expired token.' })
+      return
+    }
+
+    const hashedPassword = await AuthService.encryptString(newPassword, 10)
+
+    user.password = hashedPassword
+    user.resetPasswordToken = undefined
+    user.resetPasswordExpires = undefined
+
+    await user.save()
+
+    res.status(200).json({ message: 'Password has been successfully updated.' })
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ message: 'Something went wrong.' })
+  }
+}
+
 const AuthController = {
   googleStrategyCallback,
   passportAuthenticateGoogle,
@@ -224,6 +292,8 @@ const AuthController = {
   login,
   register,
   verifyEmail,
+  forgotPassword,
+  resetPassword,
   logout
 }
 

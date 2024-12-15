@@ -9,6 +9,8 @@ export interface IUser extends Document {
   isVerified: boolean
   verificationToken?: string
   verificationTokenExpiresAt?: Date
+  resetPasswordToken?: string
+  resetPasswordExpires?: Date
 }
 
 const userSchema = new Schema(
@@ -19,7 +21,9 @@ const userSchema = new Schema(
     name: { type: String },
     isVerified: { type: Boolean, default: false },
     verificationToken: { type: String },
-    verificationTokenExpiresAt: { type: Date }
+    verificationTokenExpiresAt: { type: Date },
+    resetPasswordToken: { type: String },
+    resetPasswordExpires: { type: Date }
   },
   { timestamps: true }
 )
