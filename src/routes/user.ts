@@ -18,7 +18,8 @@ router.get('/profile', verifyJWT, async (req, res) => {
     res.status(200).json({
       email: user.email,
       name: user.name,
-      isVerified: user.isVerified
+      isVerified: user.isVerified,
+      profilePicture: user.profilePicture
     })
     return
   } catch (error) {

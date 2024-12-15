@@ -7,6 +7,7 @@ export interface IUser extends Document {
   googleId?: string
   name?: string
   isVerified: boolean
+  profilePicture?: string
   verificationToken?: string
   verificationTokenExpiresAt?: Date
   resetPasswordToken?: string
@@ -19,6 +20,7 @@ const userSchema = new Schema(
     password: { type: String },
     googleId: { type: String },
     name: { type: String },
+    profilePicture: { type: String },
     isVerified: { type: Boolean, default: false },
     verificationToken: { type: String },
     verificationTokenExpiresAt: { type: Date },
