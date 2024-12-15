@@ -2,23 +2,11 @@ import { Profile, VerifyCallback } from 'passport-google-oauth20'
 import User, { IUser } from '../models/User'
 import passport from 'passport'
 import { Request, Response } from 'express'
-import crypto from 'crypto'
 import Config from '../config'
-import jwt from 'jsonwebtoken'
 import { COOKIE_AUTH } from '../middlewares/auth'
-import bcrypt from 'bcrypt'
-import nodemailer from 'nodemailer'
+import AuthService from '../services/authService'
 
-const JWT_SECRET = Config.JWT_SECRET
 const temporaryCodes = new Map<string, { userId: string; expiresAt: number }>() // Store codes and their associated user IDs (or sessions)
-
-const transporter = nodemailer.createTransport({
-  service: 'Gmail',
-  auth: {
-    user: Config.SMTP_USER,
-    pass: Config.SMTP_PASS
-  }
-})
 
 const googleStrategyCallback = async (
   accessToken: string,
@@ -53,7 +41,7 @@ const passportAuthenticateGoogle = passport.authenticate('google', {
 const googleCallback = (req: Request, res: Response) => {
   const user = req.user as IUser
   if (user && user._id) {
-    const tempCode = crypto.randomBytes(16).toString('hex')
+    const tempCode = AuthService.generateTemporaryCode()
     temporaryCodes.set(tempCode, {
       userId: user._id.toString(),
       expiresAt: Date.now() + 5 * 60 * 1000 // Code valid for 5 minutes
@@ -87,8 +75,7 @@ const validateCodeAndGenerateToken = async (req: Request, res: Response) => {
   }
 
   const userId = tempData.userId
-  const token = jwt.sign({ userId }, JWT_SECRET, { expiresIn: '30 days' })
-
+  const token = AuthService.generateJWT(userId, '30d')
   temporaryCodes.delete(code)
 
   res
@@ -115,36 +102,17 @@ const login = async (
   const { email, password } = req.body
 
   try {
-    const user = await User.findOne({ email })
+    const user = await AuthService.authenticateUser(email, password)
 
     if (!user) {
-      res.status(404).json({
-        code: 'INVALID_CREDENTIALS',
-        message: 'Please type correct email and password'
-      })
-      return
-    }
-
-    if (!user.email || !user.password) {
       res.status(401).json({
         code: 'INVALID_CREDENTIALS',
-        message: 'Please type correct email and password'
+        message: 'Incorrect email or password'
       })
       return
     }
 
-    const validPassword = await bcrypt.compare(password, user.password)
-    if (!validPassword) {
-      res.status(401).send({
-        code: 'INVALID_CREDENTIALS',
-        message: 'Please type correct email and password'
-      })
-      return
-    }
-
-    const token = jwt.sign({ userId: user._id }, JWT_SECRET, {
-      expiresIn: '7 days'
-    })
+    const token = AuthService.generateJWT(user._id, '7 days')
 
     res
       .cookie(COOKIE_AUTH, token, {
@@ -176,63 +144,25 @@ const register = async (req: Request, res: Response) => {
 
     /* User exists but is not verified yet, resend verification email */
     if (existingUser && !existingUser.isVerified) {
-      const verificationToken = crypto.randomBytes(32).toString('hex')
+      const verificationToken = AuthService.generateVerificationToken()
       existingUser.verificationToken = verificationToken
       existingUser.verificationTokenExpiresAt = new Date(
         Date.now() + 1 * 60 * 60 * 1000
       ) // 1 hour
       await existingUser.save()
 
-      const verificationUrl = `${Config.FRONT_END_BASE_URL}/verify-email?token=${verificationToken}`
-      const mailOptions = {
-        from: Config.SMTP_USER,
-        to: existingUser.email,
-        subject: 'Verify your email',
-        html: `    
-            <p>Hello,</p>
-            <p>Thank you for registering with us. Please click the link below to verify your email address:</p>
-            <p><a href="${verificationUrl}" target="_blank">Click here to verify your email</a></p>
-            <p><b>Once your email is verified, you will be automatically logged into your account and you can proceed to use the app right away. There is no need to log in again.</b></p>
-            <p>If you did not register with us, please ignore this email.</p>
-          `
-      }
-
-      await transporter.sendMail(mailOptions)
+      await AuthService.sendVerificationEmail(
+        existingUser.email,
+        existingUser.verificationToken
+      )
 
       res.status(200).json({ message: 'Verification email resent' })
       return
     }
 
     /* If no existing user, create a new user */
-    const salt = await bcrypt.genSalt(10)
-    const hashedPassword = await bcrypt.hash(password, salt)
-    const verificationToken = crypto.randomBytes(32).toString('hex')
-
-    const user = new User({
-      email,
-      password: hashedPassword,
-      verificationToken,
-      isVerified: false,
-      verificationTokenExpiresAt: new Date(Date.now() + 1 * 60 * 60 * 1000) // 1 hour
-    })
-
-    await user.save()
-
-    const verificationUrl = `${Config.FRONT_END_BASE_URL}/verify-email?token=${verificationToken}`
-    const mailOptions = {
-      from: Config.SMTP_USER,
-      to: user.email,
-      subject: 'Verify your email',
-      html: `          
-          <p>Hello,</p>
-          <p>Thank you for registering with us. Please click the link below to verify your email address:</p>
-          <p><a href="${verificationUrl}" target="_blank">Click here to verify your email</a></p>
-          <p><b>Once your email is verified, you will be automatically logged into your account and you can proceed to use the app right away. There is no need to log in again.</b></p>
-          <p>If you did not register with us, please ignore this email.</p>
-        `
-    }
-
-    await transporter.sendMail(mailOptions)
+    const user = await AuthService.createUser(email, password)
+    await AuthService.sendVerificationEmail(user.email, user.verificationToken)
     res
       .status(201)
       .json({ message: 'User registered. Verification email sent.' })
@@ -249,35 +179,17 @@ const verifyEmail = async (req: Request, res: Response) => {
   const { token: verificationToken } = req.query
 
   try {
-    const user = await User.findOne({ verificationToken })
+    const user = await AuthService.verifyEmail(verificationToken as string)
 
     if (!user) {
-      res
-        .status(400)
-        .json({ code: 'INVALID_TOKEN', message: 'Invalid or expired token' })
-      return
-    }
-
-    if (
-      user.verificationTokenExpiresAt &&
-      user.verificationTokenExpiresAt < new Date()
-    ) {
       res.status(400).json({
         code: 'INVALID_TOKEN',
-        message: 'Verification token has expired'
+        message: 'Invalid or expired verification token'
       })
       return
     }
 
-    user.isVerified = true
-    user.verificationToken = undefined
-    user.verificationTokenExpiresAt = undefined
-    await user.save()
-
-    const token = jwt.sign({ userId: user._id }, JWT_SECRET, {
-      expiresIn: '90 days'
-    })
-
+    const token = AuthService.generateJWT(user._id.toString(), '90d')
     res
       .cookie(COOKIE_AUTH, token, {
         httpOnly: true,
