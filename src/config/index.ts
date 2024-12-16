@@ -1,6 +1,7 @@
 import dotenv from 'dotenv'
 
-dotenv.config()
+const envFile = `.env.${process.env.NODE_ENV || 'development'}`
+dotenv.config({ path: envFile });
 
 const Config = {
   PORT: process.env.PORT || 5000,
