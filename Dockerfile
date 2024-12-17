@@ -2,13 +2,13 @@ FROM node:18-alpine
 
 WORKDIR /usr/src/app
 
-ENV NODE_ENV=production
-
 COPY package*.json ./
 
-RUN npm install --production
+RUN npm install
 
 COPY . .
+
+ENV NODE_ENV=production
 
 RUN npm run build
 

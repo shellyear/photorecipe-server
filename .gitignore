@@ -6,5 +6,4 @@ dist
 .env.development
 .env.production
 
-ReadmeAuth.md
-Readme.md
+*.md
