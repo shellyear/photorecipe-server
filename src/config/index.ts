@@ -1,11 +1,15 @@
 import dotenv from 'dotenv'
 
-const envFile = `.env.${process.env.NODE_ENV || 'development'}`
-dotenv.config({ path: envFile });
+const NODE_ENV = process.env.NODE_ENV || 'development'
+
+const envFile = `.env.${NODE_ENV}`
+dotenv.config({ path: envFile })
+
+const PORT = process.env.PORT || 5000
 
 const Config = {
-  PORT: process.env.PORT || 5000,
-  API_BASE_URL: process.env.API_BASE_URL || 'http://localhost:5000',
+  PORT,
+  API_BASE_URL: `${process.env.API_BASE_URL || 'http://localhost'}:${PORT}`,
   FRONT_END_BASE_URL: process.env.FRONT_END_BASE_URL || 'http://localhost:3000',
   MONGO_ATLAS_CONNECTION_STRING:
     process.env.MONGO_ATLAS_CONNECTION_STRING ||
@@ -18,5 +22,5 @@ const Config = {
   SMTP_USER: process.env.SMTP_USER || 'smpt_user@gmail.com',
   SMTP_PASS: process.env.SMTP_PASS || 'googleAppPassword'
 }
-
+console.log({ NODE_ENV })
 export default Config
