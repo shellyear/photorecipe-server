@@ -8,6 +8,7 @@ dotenv.config({ path: envFile })
 const PORT = process.env.PORT || 5000
 
 const Config = {
+  NODE_ENV,
   PORT,
   API_BASE_URL: `${process.env.API_BASE_URL || 'http://localhost'}:${PORT}`,
   FRONT_END_BASE_URL: process.env.FRONT_END_BASE_URL || 'http://localhost:3000',

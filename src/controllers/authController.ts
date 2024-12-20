@@ -82,8 +82,8 @@ const validateCodeAndGenerateToken = async (req: Request, res: Response) => {
   res
     .cookie(COOKIE_AUTH, token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict'
+      secure: Config.NODE_ENV === 'production',
+      sameSite: Config.NODE_ENV === 'production' ? 'none': 'strict'
     })
     .status(200)
     .send({
@@ -121,8 +121,8 @@ const login = async (
     res
       .cookie(COOKIE_AUTH, token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict'
+        secure: Config.NODE_ENV === 'production',
+        sameSite: Config.NODE_ENV === 'production' ? 'none': 'strict'
       })
       .status(200)
       .json({ code: 'LOGIN_SUCCESS', message: 'Login successul' })
@@ -200,8 +200,8 @@ const verifyEmail = async (req: Request, res: Response) => {
     res
       .cookie(COOKIE_AUTH, token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        secure: Config.NODE_ENV === 'production',
+        sameSite: Config.NODE_ENV === 'production' ? 'none': 'strict',
         maxAge: 90 * 24 * 60 * 60 * 1000 // (90 days)
       })
       .status(200)
@@ -215,8 +215,8 @@ const verifyEmail = async (req: Request, res: Response) => {
 const logout = (req: Request, res: Response) => {
   res.clearCookie(COOKIE_AUTH, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict'
+    secure: Config.NODE_ENV === 'production',
+    sameSite: Config.NODE_ENV === 'production' ? 'none': 'strict'
   })
   res.status(200).json({
     message: 'User has been logged out'

@@ -1,6 +1,7 @@
 import express from 'express'
 import User from '../models/User'
 import { COOKIE_AUTH, verifyJWT } from '../middlewares/auth'
+import Config from '../config'
 
 const router = express.Router()
 
@@ -42,8 +43,8 @@ router.delete('/delete-account', verifyJWT, async (req, res) => {
     }
     res.clearCookie(COOKIE_AUTH, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict'
+      secure: Config.NODE_ENV === 'production',
+      sameSite: Config.NODE_ENV === 'production' ? 'none' : 'strict'
     })
     res.status(200).json({
       message: 'User has been deleted and logged out'
