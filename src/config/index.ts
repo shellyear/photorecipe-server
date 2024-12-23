@@ -24,7 +24,8 @@ const Config = {
     process.env.GOOGLE_CLIENT_SECRET || 'google_client_secret',
   OPENAI_API_KEY: process.env.OPENAI_API_KEY || 'open_ai_api_key',
   SMTP_USER: process.env.SMTP_USER || 'smpt_user@gmail.com',
-  SMTP_PASS: process.env.SMTP_PASS || 'googleAppPassword'
+  SMTP_PASS: process.env.SMTP_PASS || 'googleAppPassword',
+  COOKIE_DOMAIN: process.env.COOKIE_DOMAIN || 'your_cookie_domain'
 }
 console.log({ NODE_ENV })
 export default Config

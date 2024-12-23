@@ -85,7 +85,9 @@ const validateCodeAndGenerateToken = async (req: Request, res: Response) => {
       path: '/',
       secure: Config.NODE_ENV === 'production',
       sameSite: Config.NODE_ENV === 'production' ? 'none' : 'strict',
-      maxAge: 90 * 24 * 60 * 60 * 1000 // (90 days)
+      maxAge: 90 * 24 * 60 * 60 * 1000, // (90 days)
+      domain:
+        Config.NODE_ENV === 'production' ? Config.COOKIE_DOMAIN : undefined
     })
     .status(200)
     .send({
@@ -126,7 +128,9 @@ const login = async (
         path: '/',
         secure: Config.NODE_ENV === 'production',
         sameSite: Config.NODE_ENV === 'production' ? 'none' : 'strict',
-        maxAge: 90 * 24 * 60 * 60 * 1000 // (90 days)
+        maxAge: 90 * 24 * 60 * 60 * 1000, // (90 days)
+        domain:
+          Config.NODE_ENV === 'production' ? Config.COOKIE_DOMAIN : undefined
       })
       .status(200)
       .json({ code: 'LOGIN_SUCCESS', message: 'Login successul' })
@@ -207,7 +211,9 @@ const verifyEmail = async (req: Request, res: Response) => {
         path: '/',
         secure: Config.NODE_ENV === 'production',
         sameSite: Config.NODE_ENV === 'production' ? 'none' : 'strict',
-        maxAge: 90 * 24 * 60 * 60 * 1000 // (90 days)
+        maxAge: 90 * 24 * 60 * 60 * 1000, // (90 days)
+        domain:
+          Config.NODE_ENV === 'production' ? Config.COOKIE_DOMAIN : undefined
       })
       .status(200)
       .json({ code: 'USER_VERIFIED', message: 'User has been verified' })
@@ -222,7 +228,8 @@ const logout = (req: Request, res: Response) => {
     httpOnly: true,
     path: '/',
     secure: Config.NODE_ENV === 'production',
-    sameSite: Config.NODE_ENV === 'production' ? 'none' : 'strict'
+    sameSite: Config.NODE_ENV === 'production' ? 'none' : 'strict',
+    domain: Config.NODE_ENV === 'production' ? Config.COOKIE_DOMAIN : undefined
   })
   res.status(200).json({
     message: 'User has been logged out'
