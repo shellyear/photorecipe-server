@@ -1,6 +1,7 @@
 import dotenv from 'dotenv'
 
 const NODE_ENV = process.env.NODE_ENV || 'development'
+const isProd = NODE_ENV === 'production'
 
 const envFile = `.env.${NODE_ENV}`
 dotenv.config({ path: envFile })
@@ -10,7 +11,9 @@ const PORT = process.env.PORT || 5000
 const Config = {
   NODE_ENV,
   PORT,
-  API_BASE_URL: process.env.API_BASE_URL || `${'http://localhost'}:${PORT}`,
+  API_BASE_URL: isProd
+    ? process.env.API_BASE_URL
+    : `${process.env.API_BASE_URL}:${PORT}`,
   FRONT_END_BASE_URL: process.env.FRONT_END_BASE_URL || 'http://localhost:3000',
   MONGO_ATLAS_CONNECTION_STRING:
     process.env.MONGO_ATLAS_CONNECTION_STRING ||
