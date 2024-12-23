@@ -84,7 +84,8 @@ const validateCodeAndGenerateToken = async (req: Request, res: Response) => {
       httpOnly: true,
       path: '/',
       secure: Config.NODE_ENV === 'production',
-      sameSite: Config.NODE_ENV === 'production' ? 'none': 'strict'
+      sameSite: Config.NODE_ENV === 'production' ? 'none' : 'strict',
+      maxAge: 90 * 24 * 60 * 60 * 1000 // (90 days)
     })
     .status(200)
     .send({
@@ -124,7 +125,8 @@ const login = async (
         httpOnly: true,
         path: '/',
         secure: Config.NODE_ENV === 'production',
-        sameSite: Config.NODE_ENV === 'production' ? 'none': 'strict'
+        sameSite: Config.NODE_ENV === 'production' ? 'none' : 'strict',
+        maxAge: 90 * 24 * 60 * 60 * 1000 // (90 days)
       })
       .status(200)
       .json({ code: 'LOGIN_SUCCESS', message: 'Login successul' })
@@ -204,7 +206,7 @@ const verifyEmail = async (req: Request, res: Response) => {
         httpOnly: true,
         path: '/',
         secure: Config.NODE_ENV === 'production',
-        sameSite: Config.NODE_ENV === 'production' ? 'none': 'strict',
+        sameSite: Config.NODE_ENV === 'production' ? 'none' : 'strict',
         maxAge: 90 * 24 * 60 * 60 * 1000 // (90 days)
       })
       .status(200)
@@ -220,7 +222,7 @@ const logout = (req: Request, res: Response) => {
     httpOnly: true,
     path: '/',
     secure: Config.NODE_ENV === 'production',
-    sameSite: Config.NODE_ENV === 'production' ? 'none': 'strict'
+    sameSite: Config.NODE_ENV === 'production' ? 'none' : 'strict'
   })
   res.status(200).json({
     message: 'User has been logged out'
