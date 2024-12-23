@@ -82,6 +82,7 @@ const validateCodeAndGenerateToken = async (req: Request, res: Response) => {
   res
     .cookie(COOKIE_AUTH, token, {
       httpOnly: true,
+      path: '/',
       secure: Config.NODE_ENV === 'production',
       sameSite: Config.NODE_ENV === 'production' ? 'none': 'strict'
     })
@@ -121,6 +122,7 @@ const login = async (
     res
       .cookie(COOKIE_AUTH, token, {
         httpOnly: true,
+        path: '/',
         secure: Config.NODE_ENV === 'production',
         sameSite: Config.NODE_ENV === 'production' ? 'none': 'strict'
       })
@@ -200,6 +202,7 @@ const verifyEmail = async (req: Request, res: Response) => {
     res
       .cookie(COOKIE_AUTH, token, {
         httpOnly: true,
+        path: '/',
         secure: Config.NODE_ENV === 'production',
         sameSite: Config.NODE_ENV === 'production' ? 'none': 'strict',
         maxAge: 90 * 24 * 60 * 60 * 1000 // (90 days)
@@ -215,6 +218,7 @@ const verifyEmail = async (req: Request, res: Response) => {
 const logout = (req: Request, res: Response) => {
   res.clearCookie(COOKIE_AUTH, {
     httpOnly: true,
+    path: '/',
     secure: Config.NODE_ENV === 'production',
     sameSite: Config.NODE_ENV === 'production' ? 'none': 'strict'
   })
