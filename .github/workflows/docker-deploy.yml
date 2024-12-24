@@ -37,9 +37,9 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            export PORT="{{ secrets.PORT }}"
-            export API_BASE_URL="{{ secrets.API_BASE_URL }}"
-            export FRONT_END_BASE_URL="{{ secrets.FRONT_END_BASE_URL }}"
+            export PORT="${{ secrets.PORT }}"
+            export API_BASE_URL="${{ secrets.API_BASE_URL }}"
+            export FRONT_END_BASE_URL="${{ secrets.FRONT_END_BASE_URL }}"
             export JWT_SECRET="${{ secrets.JWT_SECRET }}"
             export MONGO_ATLAS_CONNECTION_STRING="${{ secrets.MONGO_ATLAS_CONNECTION_STRING }}"
             export GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}"
@@ -50,8 +50,8 @@ jobs:
             export COOKIE_DOMAIN="${{ secrets.COOKIE_DOMAIN }}"
 
             docker pull ${{ secrets.DOCKER_USERNAME }}/photorecipe-server-multiarch:latest
-            docker stop birhacker/photorecipe-server-multiarch:latest || true
-            docker rm birhacker/photorecipe-server-multiarch:latest || true
+            docker stop ${{ secrets.DOCKER_USERNAME }}/photorecipe-server-multiarch:latest || true
+            docker rm ${{ secrets.DOCKER_USERNAME }}/photorecipe-server-multiarch:latest || true
 
             docker run -d -p $PORT:$PORT \
               -e PORT=$PORT \
