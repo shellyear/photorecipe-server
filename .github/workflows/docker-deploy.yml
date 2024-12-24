@@ -1,0 +1,67 @@
+name: Docker CI/CD
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker
+        uses: actions/setup-docker@v2
+
+      - name: Log in to Docker Hub
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+      - name: Build and Push Docker Image
+        run: |
+          docker buildx build --platform linux/amd64,linux/arm64 --load -t ${{ secrets.DOCKER_USERNAME }}/photorecipe-server-multiarch:latest .
+          docker push ${{ secrets.DOCKER_USERNAME }}/photorecipe-server-multiarch:latest
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: SSH to EC2 and deploy
+        uses: appleboy/ssh-action@v0.1.3
+        with:
+          host: ${{ secrets.EC2_IP }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            export PORT="{{ secrets.PORT }}"
+            export API_BASE_URL="{{ secrets.API_BASE_URL }}"
+            export FRONT_END_BASE_URL="{{ secrets.FRONT_END_BASE_URL }}"
+            export JWT_SECRET="${{ secrets.JWT_SECRET }}"
+            export MONGO_ATLAS_CONNECTION_STRING="${{ secrets.MONGO_ATLAS_CONNECTION_STRING }}"
+            export GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}"
+            export GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}"
+            export OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}"
+            export SMTP_USER="${{ secrets.SMTP_USER }}"
+            export SMTP_PASS="${{ secrets.SMTP_PASS }}"
+            export COOKIE_DOMAIN="${{ secrets.COOKIE_DOMAIN }}"
+
+            docker pull ${{ secrets.DOCKER_USERNAME }}/photorecipe-server-multiarch:latest
+            docker stop birhacker/photorecipe-server-multiarch:latest || true
+            docker rm birhacker/photorecipe-server-multiarch:latest || true
+
+            docker run -d -p $PORT:$PORT \
+              -e PORT=$PORT \
+              -e API_BASE_URL=$API_BASE_URL \
+              -e FRONT_END_BASE_URL=$FRONT_END_BASE_URL \
+              -e JWT_SECRET=$JWT_SECRET \
+              -e MONGO_ATLAS_CONNECTION_STRING=$MONGO_ATLAS_CONNECTION_STRING \
+              -e GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID \
+              -e GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET \
+              -e OPENAI_API_KEY=$OPENAI_API_KEY \
+              -e SMTP_USER=$SMTP_USER \
+              -e SMTP_PASS=$SMTP_PASS \
+              -e COOKIE_DOMAIN=$COOKIE_DOMAIN \
+              ${{ secrets.DOCKER_USERNAME }}/photorecipe-server-multiarch:latest
