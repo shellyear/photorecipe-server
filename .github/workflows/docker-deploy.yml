@@ -18,6 +18,7 @@ jobs:
 
       - name: Build and Push Docker Image
         run: |
+          docker buildx create --use
           docker buildx build --platform linux/amd64,linux/arm64 --load -t ${{ secrets.DOCKER_USERNAME }}/photorecipe-server-multiarch:latest .
           docker push ${{ secrets.DOCKER_USERNAME }}/photorecipe-server-multiarch:latest
 
