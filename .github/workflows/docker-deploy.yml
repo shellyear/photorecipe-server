@@ -51,7 +51,7 @@ jobs:
 
             docker pull ${{ secrets.DOCKER_USERNAME }}/photorecipe-server-multiarch:latest
             docker stop ${{ secrets.DOCKER_USERNAME }}/photorecipe-server-multiarch:latest || true
-            docker rm ${{ secrets.DOCKER_USERNAME }}/photorecipe-server-multiarch:latest || true
+            docker rm ${{ secrets.DOCKER_USERNAME }}/photorecipe-server-multiarch || true
 
             docker run -d -p $PORT:$PORT \
               -e PORT=$PORT \
